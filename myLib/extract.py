@@ -1,54 +1,20 @@
-import os
 import requests
-import pandas as pd
+import os
 
-
-def extract(
-    url="https://raw.githubusercontent.com/fivethirtyeight/data/master/college-majors/grad-students.csv",
-    url_2="https://raw.githubusercontent.com/fivethirtyeight/data/master/college-majors/recent-grads.csv",
-    file_path="data/grad-students.csv",
-    file_path_2="data/recent-grads.csv"):
+# Extracting data from GitHub
+def extractData(file_path, url="https://raw.githubusercontent.com/fivethirtyeight/data/master/airline-safety/airline-safety.csv"):
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
     
-    if not os.path.exists("data"):
-        os.makedirs("data")
+    # Request data from URL
+    response = requests.get(url)
     
-    try:
-        r = requests.get(url, stream=True)
-        if r.status_code == 200:
-            with open(file_path, "wb") as f:
-                f.write(r.content)
-        else:
-            print(f"Failed to download file from {url}")
-    except Exception as e:
-        print(f"Error downloading {url}: {e}")
-    
-    try:
-        r = requests.get(url_2, stream=True)
-        if r.status_code == 200:
-            with open(file_path_2, "wb") as f:
-                f.write(r.content)
-        else:
-            print(f"Failed to download file from {url_2}")
-    except Exception as e:
-        print(f"Error downloading {url_2}: {e}")
-    
-    # Read the files and get the first 100 rows
-    try:
-        df = pd.read_csv(file_path)
-        df_2 = pd.read_csv(file_path_2)
-        
-        df_subset = df.head(100)
-        df_subset_2 = df_2.head(100)
-        
-        # Overwrite the files with the subset of data
-        df_subset.to_csv(file_path, index=False)
-        df_subset_2.to_csv(file_path_2, index=False)
-        
-        return file_path, file_path_2
-
-    except Exception as e:
-        print(f"Error processing the CSV files: {e}")
-        return None, None
-
-
-file_path, file_path_2 = extract()
+    # Check if the request was successful
+    if response.status_code == 200:
+        with open(file_path, 'wb') as f:
+            f.write(response.content)
+        print(f"File downloaded successfully: {file_path}")
+        return file_path
+    else:
+        print(f"Failed to download file. Status code: {response.status_code}")
+        return None
