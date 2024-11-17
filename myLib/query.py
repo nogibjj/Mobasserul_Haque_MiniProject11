@@ -1,56 +1,62 @@
 from pyspark.sql import SparkSession
 
-# Initialize Spark session if it's not already initialized
-spark = SparkSession.builder \
-    .appName("Airline Safety Query App") \
-    .config("spark.jars.packages", "io.delta:delta-core_2.12:1.2.1") \
-    .getOrCreate()
-
-# Markdown file to log the SQL functions and queries
-def logQuery(query):
-    with open("output_Log.md", "a") as file:
-        file.write(f"```sql\n{query}\n```\n")
-
-# Register the Delta table as a temporary view
-delta_table_path = "dbfs:/FileStore/mh720_week11/mh720_week11_airline_safety_delta_table"
-spark.read.format("delta").load(delta_table_path).createOrReplaceTempView("mh720_week11_airline_safety_delta_table")
-
-# Define and run SQL queries on the registered table
-def queryData():
-    # Example query: Top airlines with the highest total fatalities
-    query = """
-        SELECT airline, total_fatalities
-        FROM mh720_week11_airline_safety_delta_table
-        ORDER BY total_fatalities DESC
-        LIMIT 5
+def filter_and_save_data(database, source_table, target_table):
     """
-    # Log the query
-    logQuery(query)
+    Filter specific columns from the airline safety table and save to a new Delta table.
+
+    Args:
+        database (str): Databricks database name.
+        source_table (str): Source table to filter data from.
+        target_table (str): Target table name to save filtered data.
+
+    Returns:
+        None
+    """
+    # Initialize SparkSession
+    spark = SparkSession.builder.getOrCreate()
+
+    # Check if the source table exists
+    if not spark.catalog.tableExists(f"{database}.{source_table}"):
+        print(f"Error: Table {database}.{source_table} does not exist.")
+        return
+
+    # Define the columns to select
+    selected_columns = [
+        "airline",
+        "avail_seat_km_per_week",
+        "total_incidents",
+        "total_fatalities",
+        "fatal_accidents_85_99",
+        "fatal_accidents_00_14"
+    ]
+
+    # Generate SQL query to select only the specified columns
+    query = (
+        f"CREATE OR REPLACE TABLE {database}.{target_table} AS "
+        f"SELECT {', '.join(selected_columns)} "
+        f"FROM {database}.{source_table}"
+    )
 
     # Execute the query
-    query_result = spark.sql(query)
-    query_result.show()
+    try:
+        print(
+            f"Executing query to filter and save data to "
+            f"{database}.{target_table}..."
+        )
+        spark.sql(query)
+        print(
+            f"Filtered data saved successfully to "
+            f"{database}.{target_table}."
+        )
+    except Exception as e:
+        print(f"Failed to filter and save data: {e}")
+        raise
 
-# Additional example queries
-def filterAirlinesWithIncidents():
-    # Query to filter airlines with more than 10 total incidents
-    query = """
-        SELECT airline, total_incidents
-        FROM mh720_week11_airline_safety_delta_table
-        WHERE total_incidents > 10
-        ORDER BY total_incidents DESC
-    """
-    # Log the query
-    logQuery(query)
-
-    # Execute the query
-    query_result = spark.sql(query)
-    query_result.show()
-
-# Main execution
 if __name__ == "__main__":
-    print("Querying data from the airline safety dataset...\n")
+    # Define database and table names
+    database_name = "mh720_week11"
+    source_table = "airline_safety_transformed"
+    target_table = "airline_safety_filtered"
 
-    # Example query executions
-    queryData()
-    filterAirlinesWithIncidents()
+    # Execute the filter and save operation
+    filter_and_save_data(database_name, source_table, target_table)

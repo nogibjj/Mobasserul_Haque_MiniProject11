@@ -1,46 +1,80 @@
-from mylib.extract import extractData
-from mylib.transform import transformData, loadDataToDBFS, loadDataToDelta
-from mylib.query import queryData
 from pyspark.sql import SparkSession
-from dotenv import load_dotenv
-import os
+from extract import extract
+from transform import transform_data
+from load import load_data
+from query import filter_and_save_data
+
+def main():
+    """
+    Main function to orchestrate the ETL pipeline for Airline Safety data on Databricks using DBFS.
+    """
+    # Initialize SparkSession
+    spark = SparkSession.builder.appName("Airline Safety ETL Pipeline with DBFS").getOrCreate()
+
+    # Configurations
+    database_name = "mh720_week11"  # Databricks database name
+    source_table_name = "airline_safety"  # Source table name after extraction
+    transformed_table_name = "airline_safety_transformed"  # Transformed table name
+    final_table_name = "airline_safety_filtered"  # Final filtered table name
+    dbfs_file_path = "dbfs:/mnt/data/airline-safety.csv"  # DBFS path for raw data
+
+    try:
+        # Step 1: Upload CSV to DBFS
+        print("Uploading raw CSV to DBFS...")
+        raw_data_url = (
+            "https://raw.githubusercontent.com/fivethirtyeight/data/master/airline-safety/airline-safety.csv"
+        )
+        upload_file_to_dbfs(raw_data_url, dbfs_file_path)
+        print("Raw CSV uploaded to DBFS.")
+
+        # Step 2: Extract data from DBFS
+        print("Starting data extraction...")
+        extract(source_table_name, database=database_name)
+        print("Data extraction completed.")
+
+        # Step 3: Transform data
+        print("Starting data transformation...")
+        transform_data(
+            database_name, 
+            source_table_name, 
+            transformed_table_name, 
+            "/dbfs/mh720_week11/airline_safety_transformed"
+        )
+        print("Data transformation completed.")
+
+        # Step 4: Query/Filter data
+        print("Starting data filtering...")
+        filter_and_save_data(database_name, transformed_table_name, final_table_name)
+        print("Data filtering completed.")
+
+        # Step 5: Load and display data
+        print("Starting data load...")
+        load_data(database_name, final_table_name)
+        print("Data load completed.")
+
+    except Exception as e:
+        print(f"ETL pipeline failed: {e}")
+        raise
+
+def upload_file_to_dbfs(source_url, dbfs_path):
+    """
+    Uploads a file from a URL to DBFS.
+
+    Args:
+        source_url (str): URL of the file to upload.
+        dbfs_path (str): DBFS destination path.
+
+    Returns:
+        None
+    """
+    import requests
+    with requests.get(source_url, stream=True) as r:
+        if r.status_code == 200:
+            with open("/dbfs" + dbfs_path[4:], "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+        else:
+            raise Exception(f"Failed to download file from {source_url}.")
 
 if __name__ == "__main__":
-    # Initialize Spark session with Delta support
-    spark = SparkSession.builder \
-        .appName("Airline Safety ETL") \
-        .config("spark.jars.packages", "io.delta:delta-core_2.12:1.2.1") \
-        .getOrCreate()
-
-    # Load environment variables
-    load_dotenv()
-    server_h = os.getenv("SERVER_HOSTNAME")
-    access_token = os.getenv("ACCESS_TOKEN")
-    headers = {'Authorization': f'Bearer {access_token}'}
-    
-    # Define paths
-    dbfs_path = FILESTORE_PATH + "/airline-safety.csv" 
-    local_file_path = "data/airline-safety.csv"
-    dbfs_file_path = "dbfs:/FileStore/mh720_week11/airline-safety.csv"
-    delta_table_path = "dbfs:/FileStore/mh720_week11/mh720_week11_airline_safety_delta_table"
-
-
-    # Step 1: Extract data from the source
-    print("Starting data extraction...")
-    extractData(local_file_path)
-
-    # Step 2: Load the data into Spark and transform it
-    print("Transforming data...")
-    transformed_data = transformData(spark, dbfs_file_path)
-
-    # Step 3: Load data to DBFS
-    print("Loading data to DBFS...")
-    loadDataToDBFS(local_file_path, dbfs_file_path, headers)
-
-    # Step 4: Load data into Delta Lake
-    print("Loading data to Delta Lake...")
-    loadDataToDelta(spark, dbfs_file_path, delta_table_path)
-
-    # Step 5: Query the transformed data
-    print("Querying the data...")
-    queryData()
+    main()

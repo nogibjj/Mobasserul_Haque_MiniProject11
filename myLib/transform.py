@@ -1,85 +1,80 @@
-from pyspark.sql.functions import col, sum, when
-from pyspark.sql import SparkSession
+# transform
 import os
-import base64
-import json
-import requests
-from dotenv import load_dotenv
+from pyspark.sql import SparkSession
 
-# Load environment variables
-load_dotenv()
-server_h = os.getenv("SERVER_HOSTNAME")
-access_token = os.getenv("ACCESS_TOKEN")
-headers = {'Authorization': 'Bearer %s' % access_token}
-url = "https://" + server_h + "/api/2.0"
+def transform_data(database, raw_table, transformed_table, output_dbfs_path):
+    """
+    Transform airline safety data with simple transformations.
 
-# Transform and clean the data using Spark
-def transformData(spark, file_path):
+    Args:
+        database (str): Databricks database.
+        raw_table (str): Name of the raw data table.
+        transformed_table (str): Name of the transformed table.
+        output_dbfs_path (str): DBFS path to save the transformed data as CSV.
+
+    Returns:
+        None
+    """
     try:
-        # Load the CSV file into a Spark DataFrame
-        df = spark.read.csv(file_path, header=True, inferSchema=True)
-        print(f"File loaded successfully: {file_path}")
-    except Exception as e:
-        print(f"Error loading file: {e}")
-        return None
+        # Initialize SparkSession
+        spark = SparkSession.builder.getOrCreate()
 
-    # Add new columns for total incidents and total fatalities
-    df_transformed = df.withColumn("total_incidents", col("incidents_85_99") + col("incidents_00_14")) \
-                      .withColumn("total_fatalities", col("fatalities_85_99") + col("fatalities_00_14"))
+        # Check if the raw table exists
+        if not spark.catalog.tableExists(f"{database}.{raw_table}"):
+            print(
+                f"Error: Table {database}.{raw_table} does not exist. "
+                "Transformation aborted."
+            )
+            return
 
-    # Filter airlines with more than 10 total incidents
-    df_filtered = df_transformed.filter(col("total_incidents") > 10)
+        # Generate simplified SQL query
+        query = f"""
+        CREATE OR REPLACE TABLE {database}.{transformed_table} AS
+        SELECT 
+            airline,
+            avail_seat_km_per_week,
+            
+            -- Total incidents across both periods
+            (incidents_85_99 + incidents_00_14) AS total_incidents,
+            
+            -- Total fatalities across both periods
+            (fatalities_85_99 + fatalities_00_14) AS total_fatalities,
+            
+            -- Retain original period columns for reference
+            incidents_85_99,
+            fatal_accidents_85_99,
+            fatalities_85_99,
+            incidents_00_14,
+            fatal_accidents_00_14,
+            fatalities_00_14
+        FROM {database}.{raw_table}
+        """
+        
+        # Execute the query
+        spark.sql(query)
+        print(
+            f"Transformation successful: Data saved to "
+            f"{database}.{transformed_table}"
+        )
 
-    print("Data transformed successfully.")
-    return df_filtered
+        # Save the transformed data to DBFS in CSV format
+        print(f"Loading transformed data from {database}.{transformed_table}...")
+        transformed_df = spark.table(f"{database}.{transformed_table}")
 
-def perform_query(path, headers, data={}):
-    session = requests.Session()
-    resp = session.request('POST', url + path, 
-                           data=json.dumps(data), 
-                           verify=True, 
-                           headers=headers)
-    return resp.json()
-
-def loadDataToDBFS(pathLocal, pathDBFS, headers):
-    if not os.path.exists(pathLocal):
-        print(f"Error: The file {pathLocal} does not exist.")
-        return
-
-    # Open and read the file content
-    with open(pathLocal, 'rb') as file:
-        content = file.read()
-
-    # Create the file in DBFS
-    create_data = {'path': pathDBFS, 'overwrite': True}
-    handle = perform_query('/dbfs/create', headers, data=create_data)['handle']
-
-    # Upload content in chunks
-    for i in range(0, len(content), 2**20):
-        chunk = base64.standard_b64encode(content[i:i+2**20]).decode()
-        perform_query('/dbfs/add-block', headers, data={'handle': handle, 'data': chunk})
-
-    # Close the file handle
-    perform_query('/dbfs/close', headers, data={'handle': handle})
-    print(f"File {pathLocal} uploaded to {pathDBFS} successfully.")
-
-def loadDataToDelta(spark, file_path, delta_table_path):
-    try:
-        # Load the CSV file from DBFS
-        df = spark.read.csv(file_path, header=True, inferSchema=True)
-        print(f"File loaded successfully from: {file_path}")
-
-        # Data transformation
-        df_transformed = df.withColumn("total_incidents", col("incidents_85_99") + col("incidents_00_14")) \
-                           .withColumn("total_fatalities", col("fatalities_85_99") + col("fatalities_00_14"))
-
-        df_filtered = df_transformed.filter(col("total_incidents") > 10)
-
-        # Write the DataFrame to Delta Lake
-        df_filtered.write.format("delta").mode("overwrite").save(delta_table_path)
-        print(f"Data successfully written to Delta Lake at: {delta_table_path}")
+        print(f"Saving transformed data to DBFS at {output_dbfs_path} (CSV format)...")
+        transformed_df.write.csv(output_dbfs_path, mode="overwrite", header=True)
+        print(f"Transformed data successfully saved to DBFS as CSV: {output_dbfs_path}")
 
     except Exception as e:
-        print(f"Error while loading data to Delta Lake: {e}")
+        print(f"Transformation failed: {e}")
+        raise
 
+if __name__ == "__main__":
+    # Define database, table names, and output path
+    database_name = "mh720_week11"
+    raw_table = "airline_safety"
+    transformed_table = "airline_safety_transformed"
+    output_path = "/dbfs/mh720_week11/airline_safety_transformed"
 
+    # Execute the transformation
+    transform_data(database_name, raw_table, transformed_table, output_path)
