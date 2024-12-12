@@ -9,7 +9,7 @@ def main():
     Main function to orchestrate the ETL pipeline for Airline Safety data on Databricks using DBFS.
     """
     # Initialize SparkSession
-    spark = SparkSession.builder.appName("Airline Safety ETL Pipeline with DBFS").getOrCreate()
+    #spark = SparkSession.builder.appName("Airline Safety ETL Pipeline with DBFS").getOrCreate()
 
     # Configurations
     database_name = "mh720_week11"  # Databricks database name
@@ -22,7 +22,8 @@ def main():
         # Step 1: Upload CSV to DBFS
         print("Uploading raw CSV to DBFS...")
         raw_data_url = (
-            "https://raw.githubusercontent.com/fivethirtyeight/data/master/airline-safety/airline-safety.csv"
+            "https://raw.githubusercontent.com/fivethirtyeight/data/master/airline-safety/"
+            "airline-safety.csv"
         )
         upload_file_to_dbfs(raw_data_url, dbfs_file_path)
         print("Raw CSV uploaded to DBFS.")

@@ -13,7 +13,9 @@ BASE_URL = f"https://{SERVER_HOSTNAME}/api/2.0"
 def check_filestore_path(path):
     headers = {"Authorization": f"Bearer {ACCESS_TOKEN}"}
     try:
-        response = requests.get(f"{BASE_URL}/dbfs/get-status?path={path}", headers=headers)
+        response = requests.get(
+            f"{BASE_URL}/dbfs/get-status?path={path}", headers=headers
+        )
         response.raise_for_status()
         print(f"Path exists: {path}")
         return True  # Path exists if no exception is raised
@@ -31,5 +33,3 @@ def test_databricks():
 
 if __name__ == "__main__":
     test_databricks()
-
-
