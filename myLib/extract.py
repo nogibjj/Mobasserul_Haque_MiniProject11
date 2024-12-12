@@ -2,7 +2,7 @@ from pyspark.sql import SparkSession
 import pandas as pd 
 import re 
  
-def extract(table_name, database="Airline_Safety"): 
+def extract(table_name, database="mh720_week11"): 
     """ 
     Extract airline safety data from a predefined URL, clean, and save to Delta table. 
  
