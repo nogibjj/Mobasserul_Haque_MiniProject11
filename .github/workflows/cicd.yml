@@ -26,9 +26,9 @@ jobs:
       - name: Install packages
         run: make install
 
-      # # Lint the code
-      # - name: Lint
-      #   run: make lint
+      #  Lint the code
+      - name: Lint
+        run: make lint
 
       # Run tests
       - name: Run tests
