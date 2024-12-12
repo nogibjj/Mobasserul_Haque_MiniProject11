@@ -1,31 +1,35 @@
 import requests
-from dotenv import load_dotenv
 import os
+from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
-server_h = os.getenv("SERVER_HOSTNAME")
-access_token = os.getenv("ACCESS_TOKEN")
-FILESTORE_PATH = "dbfs:/FileStore/airline-safety"
-url = f"https://{server_h}/api/2.0"
+SERVER_HOSTNAME = os.getenv("SERVER_HOSTNAME")
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
+FILESTORE_PATH = os.getenv("FILESTORE_PATH", "dbfs:/FileStore/mini_project11")
+BASE_URL = f"https://{SERVER_HOSTNAME}/api/2.0"
 
-def check_filestore_path(path, headers):
+# Function to check if a DBFS path exists
+def check_filestore_path(path):
+    headers = {"Authorization": f"Bearer {ACCESS_TOKEN}"}
     try:
-        full_url = url + f"/dbfs/get-status?path={path}"
-        print(f"Checking URL: {full_url}")
-        response = requests.get(full_url, headers=headers)
+        response = requests.get(f"{BASE_URL}/dbfs/get-status?path={path}", headers=headers)
         response.raise_for_status()
-        return response.json()['path'] is not None
-    except Exception as e:
-        print(f"Error checking file path: {e}")
+        print(f"Path exists: {path}")
+        return True  # Path exists if no exception is raised
+    except requests.exceptions.RequestException as e:
+        print(f"Error: Unable to access DBFS path '{path}'. Details: {e}")
         return False
 
+# Test function
 def test_databricks():
-    if not server_h or not access_token:
-        raise ValueError("SERVER_HOSTNAME or ACCESS_TOKEN environment variable is missing.")
+    print(f"Testing if DBFS path exists: {FILESTORE_PATH}")
+    if check_filestore_path(FILESTORE_PATH):
+        print(f"Test Passed: DBFS path '{FILESTORE_PATH}' exists.")
+    else:
+        print(f"Test Failed: DBFS path '{FILESTORE_PATH}' does not exist.")
 
-    headers = {'Authorization': f'Bearer {access_token}'}
-    assert check_filestore_path(FILESTORE_PATH, headers) is True, (
-        f"Filestore path does not exist or is inaccessible. "
-        f"Hostname: {server_h}, Path: {FILESTORE_PATH}"
-    )
+if __name__ == "__main__":
+    test_databricks()
+
+

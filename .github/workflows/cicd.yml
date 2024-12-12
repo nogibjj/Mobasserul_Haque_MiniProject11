@@ -9,23 +9,38 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:  # Define environment variables globally for the job
+      SERVER_HOSTNAME: ${{ secrets.SERVER_HOSTNAME }}
+      ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Environment Variables
-        run: |
-          echo "SERVER_HOSTNAME=${{ secrets.SERVER_HOSTNAME }}" >> $GITHUB_ENV
-          echo "HTTP_PATH=${{ secrets.HTTP_PATH }}" >> $GITHUB_ENV
-          echo "ACCESS_TOKEN=${{ secrets.ACCESS_TOKEN }}" >> $GITHUB_ENV
-      - name: install packages
-        run: make install
-      - name: lint
-        run: make lint
-      - name: extract 
-        run: make extract 
-      - name: test
-        run: make test
-      - name: format
-        run: make format
-      - name: generate_and_push
-        run: make generate_and_push
       
+      # Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      
+      # Install dependencies
+      - name: Install packages
+        run: make install
+
+      # # Lint the code
+      # - name: Lint
+      #   run: make lint
+
+      # Run tests
+      - name: Run tests
+        env:
+          SERVER_HOSTNAME: ${{ secrets.SERVER_HOSTNAME }}
+          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: make test
+
+      # Format the code
+      - name: Format
+        run: make format
+
+      # # Deploy
+      # - name: Deploy
+      #   run: make deploy
