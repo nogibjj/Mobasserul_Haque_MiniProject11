@@ -4,8 +4,9 @@ from load import load_data
 from query import filter_and_save_data
 
 def main():
-    """
-    Main function to orchestrate the ETL pipeline for Airline Safety data on Databricks using DBFS.
+    """ 
+    Main function to orchestrate the ETL pipeline for 
+    Airline Safety data on Databricks using DBFS. 
     """
     # Configurations
     database_name = "mh720_week11"  # Databricks database name
@@ -20,8 +21,8 @@ def main():
         # Step 1: Upload CSV to DBFS
         print("Uploading raw CSV to DBFS...")
         raw_data_url = (
-            "https://raw.githubusercontent.com/fivethirtyeight/data/master/airline-safety/"
-            "airline-safety.csv"
+            "https://raw.githubusercontent.com/fivethirtyeight/data/"
+            "master/airline-safety/airline-safety.csv"
         )
         upload_file_to_dbfs(raw_data_url, dbfs_file_path)
         print("Raw CSV uploaded to DBFS.")
@@ -34,16 +35,20 @@ def main():
         # Step 3: Transform data
         print("Starting data transformation...")
         transform_data(
-            database_name,
-            source_table_name,
-            transformed_table_name,
+            database_name, 
+            source_table_name, 
+            transformed_table_name, 
             "/dbfs/mh720_week11/airline_safety_transformed"
         )
         print("Data transformation completed.")
 
         # Step 4: Query/Filter data
         print("Starting data filtering...")
-        filter_and_save_data(database_name, transformed_table_name, final_table_name)
+        filter_and_save_data(
+            database_name, 
+            transformed_table_name, 
+            final_table_name
+        )
         print("Data filtering completed.")
 
         # Step 5: Load and display data
@@ -56,7 +61,7 @@ def main():
         raise
 
 def upload_file_to_dbfs(source_url, dbfs_path):
-    """
+    """ 
     Uploads a file from a URL to DBFS.
 
     Args:
@@ -64,7 +69,7 @@ def upload_file_to_dbfs(source_url, dbfs_path):
         dbfs_path (str): DBFS destination path.
 
     Returns:
-        None
+        None 
     """
     import requests
     with requests.get(source_url, stream=True) as r:
