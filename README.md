@@ -226,6 +226,3 @@ make format
 ### Workflow File
 - `.github/workflows/cicd.yml` automates the above steps on `push` or `pull_request`.
 
-## References 
-1. https://github.com/nogibjj/sqlite-lab
-2. https://learn.microsoft.com/en-us/azure/databricks/dev-tools/python-sql-connector
