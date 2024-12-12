@@ -1,4 +1,3 @@
-from pyspark.sql import SparkSession
 from extract import extract
 from transform import transform_data
 from load import load_data
@@ -8,15 +7,14 @@ def main():
     """
     Main function to orchestrate the ETL pipeline for Airline Safety data on Databricks using DBFS.
     """
-    # Initialize SparkSession
-    #spark = SparkSession.builder.appName("Airline Safety ETL Pipeline with DBFS").getOrCreate()
-
     # Configurations
     database_name = "mh720_week11"  # Databricks database name
     source_table_name = "airline_safety"  # Source table name after extraction
     transformed_table_name = "airline_safety_transformed"  # Transformed table name
     final_table_name = "airline_safety_filtered"  # Final filtered table name
-    dbfs_file_path = "dbfs:/mnt/data/airline-safety.csv"  # DBFS path for raw data
+    dbfs_file_path = (
+        "dbfs:/mnt/data/airline-safety.csv"  # DBFS path for raw data
+    )
 
     try:
         # Step 1: Upload CSV to DBFS
@@ -36,9 +34,9 @@ def main():
         # Step 3: Transform data
         print("Starting data transformation...")
         transform_data(
-            database_name, 
-            source_table_name, 
-            transformed_table_name, 
+            database_name,
+            source_table_name,
+            transformed_table_name,
             "/dbfs/mh720_week11/airline_safety_transformed"
         )
         print("Data transformation completed.")
